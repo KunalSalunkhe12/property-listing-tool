@@ -14,8 +14,25 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Brain } from "lucide-react";
 
+interface description {
+  title: string;
+  mainDescription: string;
+  propertyHighlights: string;
+  additionalFeatures: string;
+  locationAdvantages: string;
+  conclusion: string;
+}
+
 export default function StyledPropertyListingPageComponent() {
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState<description>({
+    title: "",
+    mainDescription: "",
+    propertyHighlights: "",
+    additionalFeatures: "",
+    locationAdvantages: "",
+    conclusion: "",
+  });
+  const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [formData, setFormData] = useState({
@@ -94,25 +111,40 @@ export default function StyledPropertyListingPageComponent() {
     setIsLoading(true);
     setLoadingStep(0);
 
-    // Simulate API call with delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setLoadingStep(1);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const data = {
+      listingType: formData.type,
+      location: formData.location,
+      propertyDetails: formData.propertyDesc,
+      keySellingPoints: formData.keyElements,
+    };
 
-    setDescription(`
-      Welcome to this beautiful ${formData.propertyDesc} located in the heart of ${formData.location}.
-      This stunning property has been lovingly maintained by its previous owners and is ready for you to move in and make it your own.
+    try {
+      const response = await fetch(
+        "https://property-listing-ritesh.vercel.app/generate-description",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
 
-      Positioned on a quiet street and ${formData.keyElements}, you are ideally located for easy access to the city centre.
-      The area also offers a variety of shops, restaurants, and other amenities.
+      if (!response.ok) {
+        throw new Error("Failed to generate description");
+      }
+      setLoadingStep(1);
+      const result = await response.json();
 
-      The property itself has been lovingly maintained and still retains many of its original features.
-      As you enter the house, you are welcomed by a bright and airy living room.
-      
-      This ${formData.type} property is perfect for those looking for a comfortable and convenient home in ${formData.location}.
-    `);
-
-    setIsLoading(false);
+      setDescription(result.description);
+    } catch (error) {
+      console.error("Error generating description:", error);
+      setError(
+        "An error occurred while generating the description. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -225,7 +257,13 @@ export default function StyledPropertyListingPageComponent() {
               <h2 className="text-2xl font-semibold mb-4">
                 Generated Description
               </h2>
-              <div className="bg-[#2a3449] p-4 rounded-lg min-h-[200px]">
+              <div
+                className="bg-[#2a3449] p-4 rounded-lg overflow-y-auto h-[26rem] "
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "gray transparent",
+                }}
+              >
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center h-full space-y-4">
                     <Brain className="w-12 h-12 text-blue-400 animate-pulse" />
@@ -233,12 +271,30 @@ export default function StyledPropertyListingPageComponent() {
                       {loadingSteps[loadingStep]}
                     </p>
                   </div>
-                ) : description ? (
-                  <p className="whitespace-pre-line">{description}</p>
+                ) : description.title ? (
+                  <div className="space-y-4">
+                    <p className="whitespace-pre-line">{description.title}</p>
+                    <p className="whitespace-pre-line">
+                      {description.mainDescription}
+                    </p>
+                    <p className="whitespace-pre-line">
+                      {description.additionalFeatures}
+                    </p>
+                    <p className="whitespace-pre-line">
+                      {description.locationAdvantages}
+                    </p>
+                    <p className="whitespace-pre-line">
+                      {description.propertyHighlights}
+                    </p>
+
+                    <p className="whitespace-pre-line">
+                      {description.conclusion}
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-gray-400">
-                    Your property description will appear here after you
-                    generate the listing.
+                    {error ||
+                      "Your property description will appear here after you generate the listing."}
                   </p>
                 )}
               </div>
